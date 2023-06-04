@@ -1,0 +1,48 @@
+---
+# general
+proxmox_lxc_node: "proxmox"
+proxmox_lxc_ostemplate:
+  image: "hdd:vztmpl/rockylinux-9-default_20221109_amd64.tar.xz"
+  version: rocky-9.1
+proxmox_lxc_disk:
+  size: 10
+  storage: local
+proxmox_lxc_memory: 8192
+proxmox_lxc_swap: "{{ proxmox_lxc_memory }}"
+proxmox_lxc_cores: 4
+proxmox_lxc_root_password: "{{ vault_proxmox_lxc_root_password }}"
+# last octet of the IP address + 100 to avoid the reserved range
+proxmox_lxc_vmid: "{{ 100 + ansible_host.split('.')[-1] | int }}"
+proxmox_lxc_hostname: "{{ inventory_hostname }}"
+proxmox_lxc_force: false
+
+# TODO: name should not be overridable
+proxmox_lxc_net_interfaces: >
+  {{
+    { 'net0': proxmox_lxc_net_local }
+    | combine(proxmox_lxc_net_public is defined | ternary({ 'net1': proxmox_lxc_net_public }, {}))
+  }}
+
+proxmox_lxc_net_local:
+  name: eth0
+  gw: 192.168.10.1
+  ip: "{{ ansible_host }}/32"
+  bridge: vmbr1
+  firewall: "1"
+  type: veth
+
+# List of additional mount points and their characteristics
+proxmox_lxc_mounts: []  # No aditional mount points by default
+# - id: mp0
+#   storage: local-lvm
+#   size: 16
+#   mount_point: "/mnt/data"
+#   acl: false                     # Optional.
+#   quota: false                   # Optional.
+#   backup: false                  # Optional.
+#   skip_replication: false        # Optional.
+#   read_only: false               # Optional.
+# - id: mp1
+#   storage: local-lvm
+#   size: 8
+#   mount_point: "/mnt/logs"

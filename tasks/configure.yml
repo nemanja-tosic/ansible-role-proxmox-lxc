@@ -1,0 +1,43 @@
+---
+- name: Get container config
+  shell: pvesh get /nodes/{{ proxmox_lxc_node }}/lxc/{{ proxmox_lxc_vmid }}/config --output-format json
+  register: container_config_cmd
+  delegate_to: "{{ proxmox_api_host }}"
+
+- name: Configure container memory and CPU
+  shell: >
+    pvesh set /nodes/{{ proxmox_lxc_node }}/lxc/{{ proxmox_lxc_vmid }}/config \
+      --memory "{{ proxmox_lxc_memory }}" \
+      --swap "{{ proxmox_lxc_swap }}" \
+      --cores "{{ proxmox_lxc_cores }}"
+  when: >
+    container_config.memory != proxmox_lxc_memory or
+    container_config.swap != proxmox_lxc_swap or
+    container_config.cores != proxmox_lxc_cores
+  delegate_to: "{{ proxmox_api_host }}"
+
+# FIXME: firewall is not getting parsed as a number
+- name: Configure network
+  shell: "pvesh set /nodes/{{ proxmox_lxc_node }}/lxc/{{ proxmox_lxc_vmid }}/config --{{ item.key }} '{{ config }}'"
+  loop: "{{ proxmox_lxc_net_interfaces | dict2items }}"
+  vars:
+    config: "{{ item.value.keys() | zip(item.value.values()) | map('join', '=') | join(',') }}"
+    current_config: >
+      {{ container_config[item.key] | split(',') | map('split', '=') | community.general.dict }}
+  when: >
+    item.key not in container_config or
+    item.value.name != current_config.name or
+    item.value.bridge != current_config.bridge or
+    item.value.firewall != current_config.firewall or
+    item.value.gw != current_config.gw or
+    item.value.ip != current_config.ip or
+    item.value.type != current_config.type
+  delegate_to: "{{ proxmox_api_host }}"
+
+- name: Configure mounts
+  shell: >
+    pvesh set /nodes/{{ proxmox_lxc_node }}/lxc/{{ proxmox_lxc_vmid }}/config \
+      --{{ item.key }} 'volume={{ item.value.storage }}:{{ item.value.size }},mp={{ item.value.mp}},backup={{ item.value.backup }}'
+  loop: "{{ proxmox_lxc_mounts | dict2items }}"
+  when: item.key not in container_config
+  delegate_to: "{{ proxmox_api_host }}"

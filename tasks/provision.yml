@@ -1,0 +1,50 @@
+---
+# TODO: skip if not running
+- name: Shutdown container
+  shell: >
+    pvesh create /nodes/{{ proxmox_lxc_node }}/lxc/{{ proxmox_lxc_vmid }}/status/shutdown
+  delegate_to: "{{ proxmox_api_host }}"
+  when: proxmox_lxc_force and proxmox_lxc_vmid in proxmox_containers
+
+# https://forum.proxmox.com/threads/keep-or-reuse-lxc-volume.90195
+- name: Detach mount points
+  ansible.builtin.lineinfile:
+    path: "/etc/pve/lxc/{{ proxmox_lxc_vmid }}.conf"
+    regexp: "^{{ item.key }}:"
+    state: absent
+  loop: "{{ proxmox_lxc_mounts | dict2items }}"
+  delegate_to: "{{ proxmox_api_host }}"
+  when: proxmox_lxc_force and proxmox_lxc_vmid in proxmox_containers
+
+- name: Remove container
+  shell: >
+    pvesh delete /nodes/{{ proxmox_lxc_node }}/lxc/{{ proxmox_lxc_vmid }}
+  delegate_to: "{{ proxmox_api_host }}"
+  when: proxmox_lxc_force and proxmox_lxc_vmid in proxmox_containers
+
+- name: Create container
+  shell: >
+    pvesh create /nodes/{{ proxmox_lxc_node }}/lxc \
+      --vmid "{{ proxmox_lxc_vmid }}" \
+      --password "{{ proxmox_lxc_root_password }}" \
+      --hostname "{{ proxmox_lxc_hostname }}" \
+      --rootfs "{{ proxmox_lxc_disk.storage }}:{{ proxmox_lxc_disk.size }}" \
+      --ostemplate "{{ proxmox_lxc_ostemplate.image }}" \
+      --unprivileged 1 \
+      --onboot 1 \
+      --features fuse=1 \
+      --ssh-public-keys "{{ proxmox_management_key }}"
+  delegate_to: "{{ proxmox_api_host }}"
+  register: create_container_cmd
+  when: proxmox_lxc_vmid not in proxmox_containers or proxmox_lxc_force
+  notify:
+    - container created
+
+- name: Re-attach mount points
+  ansible.builtin.lineinfile:
+    path: "/etc/pve/lxc/{{ proxmox_lxc_vmid }}.conf"
+    line: "mp0: {{ item.value.storage }}:{{ proxmox_lxc_vmid }}/vm-{{ proxmox_lxc_vmid }}-disk-1.raw,mp={{ item.value.mp }},backup={{ item.value.backup }},size={{ item.value.size }}G"
+    state: present
+  loop: "{{ proxmox_lxc_mounts | dict2items }}"
+  delegate_to: "{{ proxmox_api_host }}"
+  when: proxmox_lxc_force

@@ -1,0 +1,39 @@
+---
+# FIXME: ATM needs to run after network is added, otherwise DNS resolution fails.
+#   The network should be hotpluggable.
+- name: Start container
+  shell: >
+    pvesh create /nodes/{{ proxmox_lxc_node }}/lxc/{{ proxmox_lxc_vmid }}/status/start
+  when: create_container_cmd.changed
+  delegate_to: "{{ proxmox_api_host }}"
+  retries: 1
+  delay: 5
+  listen: container created
+
+- name: Set up SSH for new containers
+  shell: |
+    pct exec {{ proxmox_lxc_vmid }} -- dnf update -y
+    pct exec {{ proxmox_lxc_vmid }} -- dnf install -y openssh-server python3
+    pct exec {{ proxmox_lxc_vmid }} -- systemctl enable --now sshd
+  delegate_to: "{{ proxmox_lxc_node }}"
+  listen: container created
+  retries: 3
+  delay: 3
+  register: result
+  until: result.rc == 0
+
+- name: Scan for SSH host keys
+  shell:
+    cmd: "ssh-keyscan {{ ansible_host }} 2>/dev/null"
+  changed_when: false
+  register: ssh_scan
+  delegate_to: "{{ proxmox_lxc_node }}"
+  listen: container created
+
+- name: Update known_hosts
+  local_action:
+    module: known_hosts
+    key: "{{ item }}"
+    name: "{{ item | split(' ') | first }}"
+  loop: "{{ ssh_scan.stdout_lines }}"
+  listen: container created

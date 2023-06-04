@@ -1,0 +1,16 @@
+---
+# TODO: it's going to do this for every host, it needs to run this once per host
+- name: Get list of containers
+  shell: pvesh get /nodes/{{ proxmox_lxc_node }}/lxc --output-format json
+  register: proxmox_containers_cmd
+  delegate_to: "{{ proxmox_api_host }}"
+
+- debug:
+    msg: "{{ proxmox_containers_cmd.stdout | from_json }}"
+
+- import_tasks: provision.yml
+  when: >
+    proxmox_lxc_vmid not in proxmox_containers or
+    proxmox_lxc_force
+
+- import_tasks: configure.yml

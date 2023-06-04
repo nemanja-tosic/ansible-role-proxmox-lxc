@@ -1,0 +1,3 @@
+---
+proxmox_containers: "{{ proxmox_containers_cmd.stdout | from_json | map(attribute='vmid') }}"
+container_config: "{{ container_config_cmd.stdout | from_json }}"
