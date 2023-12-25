@@ -29,7 +29,7 @@
       --password "{{ proxmox_lxc_root_password }}" \
       --hostname "{{ proxmox_lxc_hostname }}" \
       --rootfs "{{ proxmox_lxc_disk.storage }}:{{ proxmox_lxc_disk.size }}" \
-      --ostemplate "{{ proxmox_lxc_ostemplate.image }}" \
+      --ostemplate "{{ proxmox_lxc_ostemplate }}" \
       --unprivileged 1 \
       --onboot 1 \
       --features fuse=1 \
@@ -40,6 +40,7 @@
   notify:
     - container created
 
+# FIXME: should restore all mount points
 - name: Re-attach mount points
   ansible.builtin.lineinfile:
     path: "/etc/pve/lxc/{{ proxmox_lxc_vmid }}.conf"

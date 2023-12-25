@@ -15,7 +15,7 @@
     pct exec {{ proxmox_lxc_vmid }} -- dnf update -y
     pct exec {{ proxmox_lxc_vmid }} -- dnf install -y openssh-server python3
     pct exec {{ proxmox_lxc_vmid }} -- systemctl enable --now sshd
-  delegate_to: "{{ proxmox_lxc_node }}"
+  delegate_to: "{{ proxmox_api_host }}"
   listen: container created
   retries: 3
   delay: 3
@@ -27,7 +27,7 @@
     cmd: "ssh-keyscan {{ ansible_host }} 2>/dev/null"
   changed_when: false
   register: ssh_scan
-  delegate_to: "{{ proxmox_lxc_node }}"
+  delegate_to: "{{ proxmox_api_host }}"
   listen: container created
 
 - name: Update known_hosts

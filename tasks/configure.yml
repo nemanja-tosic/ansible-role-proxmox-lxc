@@ -16,22 +16,15 @@
     container_config.cores != proxmox_lxc_cores
   delegate_to: "{{ proxmox_api_host }}"
 
+# TODO: remove networks that are not in proxmox_lxc_net_interfaces
 # FIXME: firewall is not getting parsed as a number
 - name: Configure network
-  shell: "pvesh set /nodes/{{ proxmox_lxc_node }}/lxc/{{ proxmox_lxc_vmid }}/config --{{ item.key }} '{{ config }}'"
+  shell: "pvesh set /nodes/{{ proxmox_lxc_node }}/lxc/{{ proxmox_lxc_vmid }}/config --net{{ index }} 'name=eth{{ index }},{{ config }}'"
   loop: "{{ proxmox_lxc_net_interfaces | dict2items }}"
+  loop_control:
+    index_var: index
   vars:
     config: "{{ item.value.keys() | zip(item.value.values()) | map('join', '=') | join(',') }}"
-    current_config: >
-      {{ container_config[item.key] | split(',') | map('split', '=') | community.general.dict }}
-  when: >
-    item.key not in container_config or
-    item.value.name != current_config.name or
-    item.value.bridge != current_config.bridge or
-    item.value.firewall != current_config.firewall or
-    item.value.gw != current_config.gw or
-    item.value.ip != current_config.ip or
-    item.value.type != current_config.type
   delegate_to: "{{ proxmox_api_host }}"
 
 - name: Configure mounts
