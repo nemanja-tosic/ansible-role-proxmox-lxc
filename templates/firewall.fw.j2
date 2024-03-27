@@ -1,0 +1,12 @@
+{# https://pve.proxmox.com/wiki/Firewall#_services_and_commands #}
+[OPTIONS]
+
+enable: {{ proxmox_lxc_firewall_enabled }}
+macfilter: {{ proxmox_lxc_firewall_mac_filter }}
+
+[RULES]
+
+{% for rule in proxmox_lxc_firewall_rules %}
+{{ rule.direction }} {{ rule.action }}{% for key, value in rule.options.items() %} --{{ key }} {{ value }}{% endfor %} # {{ rule.comment }}
+{% endfor %}
+

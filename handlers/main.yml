@@ -10,23 +10,25 @@
   delay: 5
   listen: container created
 
-- name: Set up SSH for new containers
-  shell: |
-    pct exec {{ proxmox_lxc_vmid }} -- dnf update -y
-    pct exec {{ proxmox_lxc_vmid }} -- dnf install -y openssh-server python3
-    pct exec {{ proxmox_lxc_vmid }} -- systemctl enable --now sshd
+- name: Proxmox LXC post install
+  shell: "{{ proxmox_lxc_postinstall }}"
   delegate_to: "{{ proxmox_api_host }}"
   listen: container created
-  retries: 3
+  # wait for the VM to come online
+  retries: 5
   delay: 3
   register: result
-  until: result.rc == 0
+  until: result.rc == 0 and result.stderr == ''
+  when: proxmox_lxc_postinstall
 
 - name: Scan for SSH host keys
   shell:
     cmd: "ssh-keyscan {{ ansible_host }} 2>/dev/null"
   changed_when: false
+  retries: 5
+  delay: 3
   register: ssh_scan
+  until: ssh_scan.rc == 0 and ssh_scan.stdout != ''
   delegate_to: "{{ proxmox_api_host }}"
   listen: container created
 

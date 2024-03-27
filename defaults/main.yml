@@ -13,6 +13,12 @@ proxmox_lxc_root_password: "{{ vault_proxmox_lxc_root_password }}"
 proxmox_lxc_vmid: "{{ 100 + ansible_host.split('.')[-1] | int }}"
 proxmox_lxc_hostname: "{{ inventory_hostname }}"
 proxmox_lxc_force: false
+proxmox_lxc_unprivileged: 1
+proxmox_lxc_features: ""
+
+proxmox_lxc_firewall_enabled: 0
+proxmox_lxc_firewall_mac_filter: 1
+proxmox_lxc_firewall_rules: []
 
 proxmox_lxc_net_interfaces: {}
 #  eth0:

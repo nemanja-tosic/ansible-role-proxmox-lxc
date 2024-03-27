@@ -1,0 +1,12 @@
+---
+- name: Firewall
+  delegate_to: "{{ proxmox_api_host }}"
+  template:
+    unsafe_writes: true
+    src: firewall.fw.j2
+    dest: /etc/pve/firewall/{{ proxmox_lxc_vmid }}.fw
+  # sometimes the task gets stuck on proxmox 6.4
+  retries: 3
+  delay: 1
+  register: result
+  until: result.failed == false

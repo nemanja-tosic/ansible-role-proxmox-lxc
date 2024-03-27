@@ -4,13 +4,24 @@
   shell: pvesh get /nodes/{{ proxmox_lxc_node }}/lxc --output-format json
   register: proxmox_containers_cmd
   delegate_to: "{{ proxmox_api_host }}"
-
-- debug:
-    msg: "{{ proxmox_containers_cmd.stdout | from_json }}"
+  changed_when: false
+  tags:
+    - proxmox_lxc
 
 - import_tasks: provision.yml
+  tags:
+    - proxmox_lxc
+    - proxmox_lxc_provision
   when: >
     proxmox_lxc_vmid not in proxmox_containers or
     proxmox_lxc_force
 
 - import_tasks: configure.yml
+  tags:
+    - proxmox_lxc
+    - proxmox_lxc_configure
+
+- import_tasks: firewall.yml
+  tags:
+    - proxmox_lxc
+    - proxmox_lxc_firewall

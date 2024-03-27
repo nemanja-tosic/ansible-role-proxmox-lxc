@@ -1,36 +1,66 @@
 ---
-- name: Get container config
-  shell: pvesh get /nodes/{{ proxmox_lxc_node }}/lxc/{{ proxmox_lxc_vmid }}/config --output-format json
-  register: container_config_cmd
+- name: Configure cpu
   delegate_to: "{{ proxmox_api_host }}"
+  lineinfile:
+    path: "/etc/pve/lxc/{{ proxmox_lxc_vmid }}.conf"
+    regexp: "^cores: "
+    line: "cores: {{ proxmox_lxc_cores }}"
+    state: present
 
-- name: Configure container memory and CPU
-  shell: >
-    pvesh set /nodes/{{ proxmox_lxc_node }}/lxc/{{ proxmox_lxc_vmid }}/config \
-      --memory "{{ proxmox_lxc_memory }}" \
-      --swap "{{ proxmox_lxc_swap }}" \
-      --cores "{{ proxmox_lxc_cores }}"
-  when: >
-    container_config.memory != proxmox_lxc_memory or
-    container_config.swap != proxmox_lxc_swap or
-    container_config.cores != proxmox_lxc_cores
+- name: Configure memory
   delegate_to: "{{ proxmox_api_host }}"
+  lineinfile:
+    path: "/etc/pve/lxc/{{ proxmox_lxc_vmid }}.conf"
+    regexp: "^memory: "
+    line: "memory: {{ proxmox_lxc_memory }}"
+    state: present
 
-# TODO: remove networks that are not in proxmox_lxc_net_interfaces
-# FIXME: firewall is not getting parsed as a number
-- name: Configure network
-  shell: "pvesh set /nodes/{{ proxmox_lxc_node }}/lxc/{{ proxmox_lxc_vmid }}/config --net{{ index }} 'name=eth{{ index }},{{ config }}'"
-  loop: "{{ proxmox_lxc_net_interfaces | dict2items }}"
+- name: Configure swap
+  delegate_to: "{{ proxmox_api_host }}"
+  lineinfile:
+    path: "/etc/pve/lxc/{{ proxmox_lxc_vmid }}.conf"
+    regexp: "^swap: "
+    line: "swap: {{ proxmox_lxc_swap }}"
+    state: present
+
+- name: Configure features
+  delegate_to: "{{ proxmox_api_host }}"
+  lineinfile:
+    path: "/etc/pve/lxc/{{ proxmox_lxc_vmid }}.conf"
+    regexp: "^features: "
+    line: "features: {{ proxmox_lxc_features }}"
+    state: present
+
+- name: Configure hostname
+  delegate_to: "{{ proxmox_api_host }}"
+  lineinfile:
+    path: "/etc/pve/lxc/{{ proxmox_lxc_vmid }}.conf"
+    regexp: "^hostname: "
+    line: "hostname: {{ proxmox_lxc_hostname }}"
+    state: present
+
+- name: Configure volumes
+  delegate_to: "{{ proxmox_api_host }}"
+  lineinfile:
+    path: "/etc/pve/lxc/{{ proxmox_lxc_vmid }}.conf"
+    regexp: "^mp{{ index }}: "
+    line: "mp{{ index }}: {{ item.storage }}:{{ filename }},backup={{ item.backup | default(0) }},mp={{ item.mp }},size={{ item.size }}G"
+    state: present
+  loop: "{{ proxmox_lxc_mounts }}"
   loop_control:
     index_var: index
   vars:
-    config: "{{ item.value.keys() | zip(item.value.values()) | map('join', '=') | join(',') }}"
-  delegate_to: "{{ proxmox_api_host }}"
+    filename: "{{ item.filename | default(default_filename) }}"
+    default_filename: "{{ (format == 'raw') | ternary('vm', 'subvol') }}-{{ proxmox_lxc_vmid }}-mp-{{ index }}"
+    format: "{{ item.format | default('raw') }}"
 
-- name: Configure mounts
-  shell: >
-    pvesh set /nodes/{{ proxmox_lxc_node }}/lxc/{{ proxmox_lxc_vmid }}/config \
-      --{{ item.key }} 'volume={{ item.value.storage }}:{{ item.value.size }},mp={{ item.value.mp}},backup={{ item.value.backup }}'
-  loop: "{{ proxmox_lxc_mounts | dict2items }}"
-  when: item.key not in container_config
+- name: Configure network
   delegate_to: "{{ proxmox_api_host }}"
+  lineinfile:
+    path: "/etc/pve/lxc/{{ proxmox_lxc_vmid }}.conf"
+    regexp: "^net{{ index }}: "
+    line: "net{{ index }}: name=eth{{ index }},{{ item.keys() | zip(item.values()) | map('join', '=') | join(',') }}"
+    state: present
+  loop: "{{ proxmox_lxc_net_interfaces }}"
+  loop_control:
+    index_var: index
