@@ -20,7 +20,7 @@ proxmox_lxc_firewall_enabled: 0
 proxmox_lxc_firewall_mac_filter: 1
 proxmox_lxc_firewall_rules: []
 
-proxmox_lxc_net_interfaces: {}
+proxmox_lxc_net_interfaces: []
 #  eth0:
 #    name: eth0
 #    gw: 192.168.10.1
@@ -30,7 +30,7 @@ proxmox_lxc_net_interfaces: {}
 #    type: veth
 
 # List of additional mount points and their characteristics
-proxmox_lxc_mounts: {}  # No aditional mount points by default
+proxmox_lxc_mounts: []  # No aditional mount points by default
 #  mp0:
 #    id: mp0
 #    storage: local-lvm
